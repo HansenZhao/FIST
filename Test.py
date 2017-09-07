@@ -36,8 +36,9 @@ hbmm.save_csv('test.csv')
 '''
 
 sh = models.SpatialHeteroBMModel(False,1000,0.1)
-sh.simulate()
-sh.overview()
+sh.simulate(3000)
+#sh.overview()
+sh.save_csv('simu_hetero.csv')
 
 
 

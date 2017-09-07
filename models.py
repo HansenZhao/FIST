@@ -68,7 +68,7 @@ class HomoBMModel(fist_element.BasicModel):
 
 class SpatialHeteroBMModel(fist_element.BasicModel):
 
-    def __init__(self, is_warp = False,agentNum=1000,dt=0.1, D_tuple=(0.01,0.001), angle_tuple=(math.pi,math.pi/2)):
+    def __init__(self, is_warp = False,agentNum=10000,dt=0.1, D_tuple=(0.003,0.01), angle_tuple=(math.pi*0.8,math.pi), sat_rate = 0.6):
         super().__init__()
         self.is_warp = is_warp
         self.dt = dt
@@ -81,6 +81,7 @@ class SpatialHeteroBMModel(fist_element.BasicModel):
         self.D_to_delta_pool = dict()
         self.D_to_delta_pool[D_tuple[0]] = []
         self.D_to_delta_pool[D_tuple[1]] = []
+        self.sat_rate = sat_rate
 
     def initField(self):
         dlg = win32ui.CreateFileDialog(1,'*.tif',None)
@@ -109,18 +110,26 @@ class SpatialHeteroBMModel(fist_element.BasicModel):
         for n in range(self.agentNum):
             init_x = random.uniform(0,self.field.width)
             init_y = random.uniform(0, self.field.height)
-            self.agents.append(fist_element.Agent(n,init_x,init_y,active = True,dir = []))
+            self.agents.append(fist_element.Agent(n,init_x,init_y,active = True,dir = random.uniform(-math.pi,math.pi)))
 
     def next_step(self):
         for agent in self.agents:
             if agent.get('active'):
+                # get D based on location
                 patch = self.field.get_nearest_patch(agent.get('x'),agent.get('y'))
                 D = patch.get('D')
+                # get step_length based on D
                 step_len = self.D_to_delta_pool[D]
-                max_angle = patch.get('angle')
                 step = step_len[self.D_to_pointer[D]]
+                # refresh pointer
                 self.D_to_pointer[D] += 1
-                angle = random.uniform(-max_angle,max_angle)
+                # define angle
+                if random.uniform(0,1) > self.sat_rate:
+                    angle = random.uniform(-math.pi,math.pi)
+                else:
+                    max_angle = patch.get('angle')
+                    hist_dir = agent.get('dir')
+                    angle = random.uniform(hist_dir-max_angle,hist_dir+max_angle)
                 agent.move(step*math.cos(angle),step*math.sin(angle))
                 # check if out of line
                 x,y = (agent.get('x'),agent.get('y'))
@@ -169,6 +178,11 @@ class SpatialHeteroBMModel(fist_element.BasicModel):
         mag_2 = np.array(vec_2)**2
         mag_2 = mag_2.sum()
         return np.dot(vec_1,vec_2)/(mag_1*mag_2)
+
+    @staticmethod
+    def vec2angle(vec):
+        alpha = math.acos(vec[0]/(vec[0]**2+vec[1]**2))
+        return alpha if vec[1]>0 else (2*math.pi-alpha)
 
 
 

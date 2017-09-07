@@ -2,6 +2,7 @@ import math
 import numpy as np
 import random
 from abc import ABC,abstractmethod
+import matplotlib.pyplot as plt
 
 class Patch (object):
     def __init__(self, p_id=None, pos_x=None, pos_y=None, **kwargs):
@@ -80,7 +81,7 @@ class Agent (object):
 
 
 class Field2D (object):
-    def __init__(self,width, height, p_width, is_warp=False):
+    def __init__(self,width, height, p_width, is_warp=False, **kwargs):
         self.width = math.ceil(width/p_width)*p_width
         self.height = math.ceil(height/p_width)*p_width
         self.p_width = p_width
@@ -92,6 +93,10 @@ class Field2D (object):
         for y in range(self.n_height):
             for x in range(self.n_width):
                 self.patches.append(Patch(x+y*self.n_width, x, y))
+
+        self.__global_prop = dict()
+        for key,value in kwargs.items():
+            self.__global_prop[key] = value
 
     def __len__(self):
         return len(self.patches)
@@ -116,20 +121,47 @@ class Field2D (object):
             return None
         return self.patches[self.__xy2index(math.floor(x/self.p_width),math.floor(y/self.p_width))]
 
+    def get_global_prop(self,name,default_value=None):
+        if name in self.__global_prop.keys():
+            return self.__global_prop[name]
+        elif default_value:
+            self.__global_prop[name] = default_value
+            return default_value
+        else:
+            return None
+
+    def set_global_prop(self,name,value):
+        self.__global_prop[name] = value
+
+
 
 class BasicModel (ABC):
-    def __init__(self):
-        pass
+    def __init__(self, agentNumber, dt):
+        self.agentNum = agentNumber
+        self.dt = dt
+        self.agents = []
+        self.is_simulated = False
     @abstractmethod
     def initField(self):pass
     @abstractmethod
     def initAgents(self):pass
     @abstractmethod
-    def save_csv(self,path):pass
-    @abstractmethod
     def simulate(self,step_num=1000):
         self.initField()
         self.initAgents()
+    def overview(self):
+        if self.is_simulated:
+            for n in range(self.agentNum):
+                plt.plot(self.agents[n].get_dimension(0),self.agents[n].get_dimension(1))
+            plt.show()
+    def save_csv(self,path):
+        m = self.agents[0].get_particle_mat()
+        for agent in self.agents[1:]:
+            m = np.row_stack((m,agent.get_particle_mat()))
+        row_fmt = '{0:f},{1:f},{2:f},{3:f},{4:f}\n'
+        with open(path,'w') as f:
+            for row in m:
+                f.write(row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4]))
 
 
 class BMGenerator2D(object):
@@ -154,7 +186,7 @@ class BMGenerator2D(object):
 
     @staticmethod
     def step_len_intens(u, D, delta_t):
-        return u/(2*D*delta_t)*math.exp(-math.pow(u,2)/(4*D*delta_t))
+        return u/(2*D*delta_t)*math.exp(-math.pow(u, 2)/(4*D*delta_t))
     @staticmethod
     def get_BM_distribution(D, delta_t, interval, eps):
         u = [0.0]

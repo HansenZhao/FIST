@@ -8,14 +8,10 @@ import win32ui
 
 class HomoBMModel(fist_element.BasicModel):
     def __init__(self,field=fist_element.Field2D(20,20,1,False),agentNum=1000,D=0.01,dt=0.1):
-        super().__init__()
+        super().__init__(agentNum, dt)
         self.field = field
         self.D = D
-        self.agentNum = agentNum
-        self.dt = dt
-        self.agents = []
         self.pointer = 0
-        self.is_simulated = False
 
     def initField(self):
         self.field.set_patch(lambda p,x:0,'D',[self.D])
@@ -48,34 +44,12 @@ class HomoBMModel(fist_element.BasicModel):
             self.next_step()
         self.is_simulated = True
 
-    def overview(self):
-        if self.is_simulated:
-            for n in range(self.agentNum):
-                plt.plot(self.agents[n].get_dimension(0),self.agents[n].get_dimension(1))
-            plt.show()
-
-    def save_csv(self,path):
-        m = self.agents[0].get_particle_mat()
-        for agent in self.agents[1:]:
-            m = np.row_stack((m,agent.get_particle_mat()))
-        row_fmt = '{0:f},{1:f},{2:f},{3:f},{4:f}\n'
-        with open(path,'w') as f:
-            for row in m:
-                f.write(row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4]))
-
-
-
-
 class SpatialHeteroBMModel(fist_element.BasicModel):
 
-    def __init__(self, is_warp = False,agentNum=10000,dt=0.1, D_tuple=(0.003,0.01), angle_tuple=(math.pi*0.8,math.pi), sat_rate = 0.6):
-        super().__init__()
+    def __init__(self, is_warp = False,agentNum=20000,dt=0.1, D_tuple=(0.1,0.3), angle_tuple=(math.pi/2,math.pi), sat_rate = 0.8):
+        super().__init__(agentNum, dt)
         self.is_warp = is_warp
-        self.dt = dt
-        self.agentNum = agentNum
-        self.agents = []
         self.p_width = 1
-        self.is_simulated = False
         self.D_tuple = D_tuple
         self.angle_tuple = angle_tuple
         self.D_to_delta_pool = dict()
@@ -143,29 +117,13 @@ class SpatialHeteroBMModel(fist_element.BasicModel):
         super().simulate(step_num)
         self.pool_capacity = step_num*self.agentNum
         for item in self.D_tuple:
-            bmg = fist_element.BMGenerator2D(item,self.dt)
-            sl = bmg.get_BM_step_len(item,self.dt,self.pool_capacity)
+            sl = fist_element.BMGenerator2D.get_BM_step_len(item,self.dt,self.pool_capacity)
             self.D_to_delta_pool[item] = sl
         self.D_to_pointer = {self.D_tuple[0]:0, self.D_tuple[1]:0}
 
         for n in range(step_num):
             self.next_step()
         self.is_simulated = True
-
-    def overview(self):
-        if self.is_simulated:
-            for n in range(self.agentNum):
-                plt.plot(self.agents[n].get_dimension(0),self.agents[n].get_dimension(1))
-            plt.show()
-
-    def save_csv(self,path):
-        m = self.agents[0].get_particle_mat()
-        for agent in self.agents[1:]:
-            m = np.row_stack((m,agent.get_particle_mat()))
-        row_fmt = '{0:f},{1:f},{2:f},{3:f},{4:f}\n'
-        with open(path,'w') as f:
-            for row in m:
-                f.write(row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4]))
 
     @staticmethod
     def ppos_2_index(p,x):
@@ -184,6 +142,54 @@ class SpatialHeteroBMModel(fist_element.BasicModel):
         alpha = math.acos(vec[0]/(vec[0]**2+vec[1]**2))
         return alpha if vec[1]>0 else (2*math.pi-alpha)
 
+class DirPreferBMModel(fist_element.BasicModel):
+    def __init__(self, field=fist_element.Field2D(20,20,1,False), agentNum = 10000, dt=0.1, D=0.01, init_phase=0.0, palstance=1.0, angle_tor=math.pi/3, sat_rate = 0.7):
+        super().__init__(agentNum, dt)
+        self.D = D
+        self.field = field
+        self.init_phase = init_phase
+        self.palstance = palstance
+        self.angle_tor = angle_tor
+        self.cur_time = 0.0
+        self.pointer = 0
+        self.sat_rate = sat_rate
+
+    def initField(self):
+        self.field.set_global_prop('angle',self.init_phase)
+        self.field.set_patch(lambda p,x:0,'D',[self.D])
+
+    def initAgents(self):
+        for n in range(self.agentNum):
+            init_x = random.uniform(0,self.field.width)
+            init_y = random.uniform(0, self.field.height)
+            self.agents.append(fist_element.Agent(n,init_x,init_y,active = True,dir = random.uniform(-math.pi,math.pi)))
+
+    def next_step(self):
+        for agent in self.agents:
+            step_len = self.step_len_pool[self.pointer]
+            self.pointer += 1
+            if random.uniform(0,1) > self.sat_rate:
+                angle = random.uniform(-math.pi,math.pi)
+            else:
+                angle = self.field.get_global_prop('angle') + random.uniform(-self.angle_tor,self.angle_tor)
+            agent.move(step_len * math.cos(angle), step_len * math.sin(angle))
+            # check if out of line
+            x, y = (agent.get('x'), agent.get('y'))
+            if x < 0 or y < 0 or x > self.field.width or y > self.field.height:
+                if self.field.is_warp:
+                    agent.set_cur_pos(math.fmod(x, self.field.width), math.fmod(y, self.field.width))
+                else:
+                    agent.set('active', False)
+        self.cur_time += self.dt
+        new_angle = math.fmod(self.field.get_global_prop('angle')+self.palstance*self.dt,2*math.pi)
+        self.field.set_global_prop('angle',new_angle)
+
+    def simulate(self,step_num=1000):
+        super().simulate(step_num)
+        self.step_len_pool = fist_element.BMGenerator2D.get_BM_step_len(self.D,self.dt,step_num*self.agentNum)
+        for n in range(step_num):
+            self.next_step()
+        self.is_simulated = True
 
 
 

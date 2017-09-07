@@ -1,5 +1,6 @@
 import fist_element
 import models
+import math
 import matplotlib.pyplot as plt
 
 '''
@@ -33,12 +34,17 @@ plt.show()
 hbmm = models.HomoBMModel()
 hbmm.simulate()
 hbmm.save_csv('test.csv')
-'''
+
 
 sh = models.SpatialHeteroBMModel(False,1000,0.1)
-sh.simulate(3000)
+sh.simulate(500)
 #sh.overview()
-sh.save_csv('simu_hetero.csv')
+sh.save_csv('simu_hetero_08.csv')
+'''
+
+dp = models.DirPreferBMModel(agentNum=100,palstance=0.1,sat_rate=0.6,angle_tor=math.pi*0.8)
+dp.simulate()
+dp.overview()
 
 
 

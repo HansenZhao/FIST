@@ -92,7 +92,7 @@ class Field2D (object):
 
         for y in range(self.n_height):
             for x in range(self.n_width):
-                self.patches.append(Patch(x+y*self.n_width, x, y))
+                self.patches.append(Patch(x+y*self.n_width, x*p_width, y*p_width))
 
         self.__global_prop = dict()
         for key,value in kwargs.items():
@@ -104,7 +104,17 @@ class Field2D (object):
     def set_patch(self,func,name,value_list,*args):
         for p in self.patches:
             I = func(p,args)
-            p.set(name,value_list[I])
+            if value_list[I] is None:
+                continue
+            else:
+                p.set(name,value_list[I])
+
+    def patch_prop_list(self,name):
+        res = []
+        for p in self.patches:
+            res.append(p.get(name))
+        res = np.reshape(res,(self.n_width,self.n_height))
+        return res
 
     def __xy2index(self,x, y):
         return x+y*self.n_width
@@ -162,6 +172,17 @@ class BasicModel (ABC):
         with open(path,'w') as f:
             for row in m:
                 f.write(row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4]))
+    def agent_prop(self,name):
+        x = []
+        for agent in self.agents:
+            x.append(agent.get(name))
+        return x
+    @property
+    def agent_pos_x(self):
+        return self.agent_prop('x')
+    @property
+    def agent_pos_y(self):
+        return self.agent_prop('y')
 
 
 class BMGenerator2D(object):

@@ -66,17 +66,18 @@ dp.save_csv('dirprefer_high_02_08.csv')
 dp = models.DirPreferBMModel(agentNum=500,palstance=0.1,sat_rate=0.2,angle_tor=math.pi*0.2)
 dp.simulate(step_num=3000)
 dp.save_csv('dirprefer_high_02_02.csv')
-
-f = models.AntField(10,10,0.2,evapor_rate=0.1,food_amount=3)
+'''
+f = models.AntField(10,10,0.5,evapor_rate=0.1,food_amount=5)
 f.set_nest_location(5,5,1)
 f.set_food_location(1,1,1)
 f.set_food_location(1,9,1)
 f.set_food_location(9,5,1)
 
 
-am = models.AntModel(f,agentNum=200,dt=0.1,speed=2,vision=1)
+am = models.AntModel(f,agentNum=200,dt=0.1,speed=5,vision=1)
 am.simulate(step_num=1000,display=True)
 am.save_csv('ant')
+
 '''
 f = models.AntField(7,7,0.5,evapor_rate=0.05,food_amount=1000)
 f.set_nest_location(1,1,1)
@@ -84,4 +85,5 @@ f.set_food_location(4,4,1)
 
 am = models.AntModel(f,agentNum=20,dt=1,speed=0.5,vision=1.5)
 am.simulate(step_num=1000,display=True)
+'''
 

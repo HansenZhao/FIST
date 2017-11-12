@@ -195,6 +195,119 @@ class DirPreferBMModel(fist_element.BasicModel):
             self.next_step()
         self.is_simulated = True
 
+class Ant(fist_element.Agent):
+    def __init__(self,a_id,x,y,food=0,dir=np.random.randint(0,8,1),max_turn = 3,var_angle=math.pi/10):
+        super().__init__(a_id,x,y,food=food)
+        self.dir = dir
+        self.max_turn = max_turn
+        self.var_angle = var_angle
+    def turn_back(self):
+        if self.dir < 4:
+            self.dir += 4
+        else:
+            self.dir -= 4
+    def try_rand_walk(self):
+        dir_var = np.random.randint(-self.max_turn,self.max_turn+1,1)
+        new_dir = self.dir + dir_var[0]
+        if new_dir > 7:
+            new_dir -= 8
+        elif new_dir < 0:
+            new_dir += 8
+        self.dir = new_dir
+        return self.__try_goto(new_dir)
+    def try_move_along(self,dx,dy):
+        dir = Ant.vec_to_num(AntField.normalize_vector(np.array([dx,dy])))
+        distance = Ant.dir_distance(dir,self.dir)
+        if distance > self.max_turn:
+            if Ant.is_left(self.dir,dir):
+                dir = Ant.turn_num(self.dir,self.max_turn)
+            else:
+                dir = Ant.turn_num(self.dir,-self.max_turn)
+        self.dir = dir
+        return self.__try_goto(dir)
+    def try_look_for_food(self,sense):
+        valid_num = sum(np.array(sense)>0)
+        if valid_num <= 1:
+            return self.try_rand_walk()
+        else:
+            pass
+    def __try_goto(self,dir_num):
+        angle = Ant.num_to_angle(dir_num) + np.random.uniform(-self.var_angle, self.var_angle)
+        return np.cos(angle), np.sin(angle)
+    @staticmethod
+    def is_left(origin,target):
+        value_tag = (target - origin) >= 0
+        overlap_tag = abs(target-origin) != Ant.dir_distance(target,origin)
+        return value_tag ^ overlap_tag
+    @staticmethod
+    def turn_num(dir,num):
+        target = dir + num
+        if target > 7:
+            return target - 8
+        elif target < 0:
+            return target + 8
+    @staticmethod
+    def num_to_vec(dir_num):
+        if dir_num in [1,0,7]:
+            x = 1
+        elif dir_num in [3,4,5]:
+            x = -1
+        else:
+            x = 0
+        if dir_num in [1,2,3]:
+            y = 1
+        elif dir_num in [5,6,7]:
+            y = -1
+        else:
+            y = 0
+        return AntField.normalize_vector(np.array([x,y]))
+    @staticmethod
+    def vec_to_num(vec,thres=0.1):
+        x = vec[0]
+        if abs(x) < thres:
+            x = 0
+        elif x > 0:
+            x = 1
+        else:
+            x = -1
+        y = vec[1]
+        if abs(y) < thres:
+            y=0
+        elif y > 0:
+            y=1
+        else:
+            y = -1
+        if [x,y] == [1,0]:
+            return 0
+        elif [x,y] == [1,1]:
+            return 1
+        elif [x,y] == [0,1]:
+            return 2
+        elif [x,y] == [-1,1]:
+            return 3
+        elif [x,y] == [-1,0]:
+            return 4
+        elif [x,y] == [-1,-1]:
+            return 5
+        elif [x,y] == [0,-1]:
+            return 6
+        elif [x,y] == [1,-1]:
+            return 7
+        else:
+            return None
+    @staticmethod
+    def dir_distance(dir_a,dir_b):
+        dis = abs(dir_a-dir_b)
+        if dis > 4:
+            dis = 8 - dis
+        return dis
+    @staticmethod
+    def num_to_angle(dir_a):
+        if dir_a <= 4:
+            return dir_a * math.pi/4
+        else:
+            return (dir_a-8) * math.pi/4
+
 
 class AntField(fist_element.Field2D):
     def __init__(self,width, height, p_width, is_warp=False, evapor_rate=0.1, food_amount = 50):
@@ -224,12 +337,13 @@ class AntField(fist_element.Field2D):
     def check_for_home(self,x,y):
         p = self.get_nearest_patch(x, y)
         return p.get('home') > 0
-    def check_for_signal(self,x,y,r):
+    def check_for_signal(self,x,y,r,dir = None):
         check_list = []
         for p in self.patches:
-            if AntField.isInside2D(p,([x,y],r)):
+            if AntField.isInside2D(p,([x,y],r)) and (dir is None or AntField.isAhead(p,([x,y],dir))):
                 check_list.append([p.pos_x,p.pos_y,p.get('signal')])
         check_list = np.array(check_list)
+        #print(check_list.shape[0])
         if check_list.shape[0] == 0:
             return 0,0
         if np.max(check_list[:,2]) == 0:
@@ -239,15 +353,16 @@ class AntField(fist_element.Field2D):
             valid_signal_number = sum(signal_value>0)
             max_pos = check_list[signal_value==np.max(signal_value),:2]
             max_pos = max_pos[0]
-            if valid_signal_number <= 2:
-                #return 0,AntField.normalize_vector(max_pos-np.array([x,y]))
-                return 0,0
+            if valid_signal_number == 1:
+                return 1,AntField.normalize_vector(max_pos-np.array([x,y]))
+                #return 0,0
             else:
                 valid_signal = check_list[signal_value>0,:]
                 value = valid_signal[:,2]
                 min_pos = valid_signal[value==np.min(value),:2]
                 min_pos = min_pos[0]
             return 1,AntField.normalize_vector(min_pos-max_pos+min_pos-np.array([x,y]))
+
     def add_signal(self,x,y):
         p = self.get_nearest_patch(x, y)
         if p.get('signal') == 0:
@@ -255,6 +370,17 @@ class AntField(fist_element.Field2D):
     def to_home(self,x,y):
         vec = np.array([self.nest_x,self.nest_y]) - np.array([x,y])
         return vec/np.sqrt(np.sum(np.power(vec,2)))
+    @staticmethod
+    def isAhead(p,args):
+        xy0 = args[0]
+        dir = args[1]
+        vec = np.array([p.pos_x,p.pos_y])-np.array(xy0)
+        if np.sum(vec)==0:
+            return 0
+        to_patch = AntField.normalize_vector(vec)
+        cos_value = np.dot(dir,to_patch)
+        #print(cos_value)
+        return 1 if cos_value > 0.3 else 0
     @staticmethod
     def isInside2D(p,args):
         xy0 = args[0]
@@ -285,7 +411,7 @@ class AntModel(fist_element.BasicModel):
         self.vision = vision
     def initAgents(self):
         for n in np.arange(self.agentNum):
-            self.agents.append(fist_element.Agent(n,self.field.nest_x,self.field.nest_y,food = 0))
+            self.agents.append(fist_element.Agent(n,self.field.nest_x,self.field.nest_y,food = 0,dir_x = 1, dir_y = 0))
     def initField(self):
         pass
     def next_step(self,frame):
@@ -297,10 +423,12 @@ class AntModel(fist_element.BasicModel):
         for agent in self.agents:
             x,y = (agent.get('x'),agent.get('y'))
             has_food = agent.get('food') > 0
+            agent_dir = [agent.get('dir_x'),agent.get('dir_y')]
             if has_food:
                 self.field.add_signal(x,y)
             if self.field.check_for_food(x,y) and not has_food:
                 agent.set('food',1)
+                self.field.add_signal(x, y)
                 print('Frame {:d}: pick food by Ant {:d}'.format(frame,agent.a_id))
                 has_food = True
             if self.field.check_for_home(x,y) and has_food:
@@ -311,16 +439,20 @@ class AntModel(fist_element.BasicModel):
             if has_food:
                 dir = self.field.to_home(x, y)
             else:
-                bIndex, dir = self.field.check_for_signal(x,y,self.vision)
-                if not bIndex:
+                bIndex, dir = self.field.check_for_signal(x,y,self.vision,dir=agent_dir)
+                if (not bIndex) or (np.dot(dir,np.array(agent_dir))<0):
                     # random walk
                     angle = random.uniform(-math.pi,math.pi)
                     dir = [np.cos(angle),np.sin(angle)]
+                else:
+                    print('Ant:{:d} sense food at {:f},{:f}'.format(agent.a_id,dir[0],dir[1]))
             dx, dy = (dir[0] * self.speed * self.dt, dir[1] * self.speed * self.dt)
             if type(dx) is np.ndarray:
                 print('s')
 
             dx,dy = self.handle_move(x,y,dx,dy)
+            agent.set('dir_x',dx)
+            agent.set('dir_y',dy)
             agent.move(dx,dy)
 
     def handle_move(self,x,y,dx,dy):
@@ -360,15 +492,15 @@ class AntModel(fist_element.BasicModel):
                 x = np.array(self.agent_pos_x)
                 y = np.array(self.agent_pos_y)
                 ax1.matshow(food_mat,cmap='Reds',vmin=0,vmax=self.field.max_food)
-                ax1.scatter(x[has_food==False]/self.field.p_width,y[has_food==False]/self.field.p_width)
-                ax1.scatter(x[has_food ] / self.field.p_width, y[has_food] / self.field.p_width)
+                ax1.scatter(x[has_food==False]/self.field.p_width,y[has_food==False]/self.field.p_width,s=15)
+                ax1.scatter(x[has_food ] / self.field.p_width, y[has_food] / self.field.p_width,s=15)
                 ax1.set_xlim([0,self.field.n_width])
                 ax1.set_ylim([0,self.field.n_height])
                 ax2.matshow(chemical_mat,cmap='Blues')
                 ax2.set_xlim([0, self.field.n_width])
                 ax2.set_ylim([0, self.field.n_height])
                 plt.draw()
-                #plt.savefig('fig_{:04d}.png'.format(n),dpi=200)
+                plt.savefig('fig_{:04d}.png'.format(n),)
                 plt.pause(0.01)
 
         self.is_simulated = True

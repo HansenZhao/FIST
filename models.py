@@ -469,12 +469,12 @@ class AntModel(fist_element.BasicModel):
         return dx,dy
 
 
-    def simulate(self,step_num=1000,display = False):
+    def simulate(self,step_num=1000,display = False,saveFig = False):
         super().simulate(step_num)
         self.food_dynamic = []
         self.signal_dynamic = []
         if display:
-            fig = plt.figure()
+            fig = plt.figure(figsize=(10,5),dpi=100)
             ax1 = plt.subplot(121,)
             ax2 = plt.subplot(122)
             plt.ion()
@@ -500,7 +500,8 @@ class AntModel(fist_element.BasicModel):
                 ax2.set_xlim([0, self.field.n_width])
                 ax2.set_ylim([0, self.field.n_height])
                 plt.draw()
-                plt.savefig('fig_{:04d}.png'.format(n),)
+                if saveFig:
+                    plt.savefig('fig_{:04d}.png'.format(n))
                 plt.pause(0.01)
 
         self.is_simulated = True

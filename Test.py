@@ -3,7 +3,7 @@ import models
 import math
 import matplotlib.pyplot as plt
 
-'''
+'''test element
 a = fist_element.Patch(1,1,1,D=0.01,asym = 100)
 print(a)
 
@@ -29,23 +29,36 @@ d = fist_element.BMGenerator2D()
 x,y = d.get(10000)
 plt.plot(x,y)
 plt.show()
-
+'''
+''' homogeneous BM simulation
 for m in range(10):
     hbmm = models.HomoBMModel(fist_element.Field2D(38,38,1,False),agentNum=200,D=0.05)
     hbmm.simulate(step_num=3000)
     hbmm.save_csv('homo_200_{:d}.csv'.format(m))
+'''
+
+hbmm = models.HomoBMModel(fist_element.Field2D(38,38,1,False),agentNum=200,D=0.02)
+hbmm.simulate(step_num=3000)
+hbmm.save_csv('homo_200.csv')
 
 sh = models.SpatialHeteroBMModel(False,500,0.1,D_tuple=(0.02,0.06),sat_rate=0.7)
 sh.simulate(step_num=3000)
 #sh.overview()
 sh.save_csv('hetero_D_THU.csv')
 
+''' heterogeneous BM simulation
+sh = models.SpatialHeteroBMModel(False,500,0.1,D_tuple=(0.02,0.06),sat_rate=0.7)
+sh.simulate(step_num=3000)
+#sh.overview()
+sh.save_csv('hetero_D_THU.csv')
+'''
+'''
 sh = models.SpatialHeteroBMModel(False,500,0.1,D_tuple=(0.02,0.06),sat_rate=0.7)
 sh.simulate(step_num=3000)
 #sh.overview()
 sh.save_csv('hetero_D_angle_THU_s.csv')
-
-
+'''
+'''Direction prefer BM motion
 dp = models.DirPreferBMModel(agentNum=500,palstance=0.1,sat_rate=0.0,angle_tor=math.pi*1.0)
 dp.simulate(step_num=3000)
 dp.save_csv('dirprefer_high_00_10.csv')
@@ -67,6 +80,7 @@ dp = models.DirPreferBMModel(agentNum=500,palstance=0.1,sat_rate=0.2,angle_tor=m
 dp.simulate(step_num=3000)
 dp.save_csv('dirprefer_high_02_02.csv')
 '''
+'''Ant simulation
 f = models.AntField(10,10,0.5,evapor_rate=0.1,food_amount=5)
 f.set_nest_location(5,5,1)
 f.set_food_location(1,1,1)
@@ -75,9 +89,9 @@ f.set_food_location(9,5,1)
 
 
 am = models.AntModel(f,agentNum=200,dt=0.1,speed=5,vision=1)
-am.simulate(step_num=1000,display=True)
+am.simulate(step_num=300,display=True,saveFig=True)
 am.save_csv('ant')
-
+'''
 '''
 f = models.AntField(7,7,0.5,evapor_rate=0.05,food_amount=1000)
 f.set_nest_location(1,1,1)

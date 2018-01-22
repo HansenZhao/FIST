@@ -30,21 +30,16 @@ x,y = d.get(10000)
 plt.plot(x,y)
 plt.show()
 '''
-''' homogeneous BM simulation
+#homogeneous BM simulation
 for m in range(10):
-    hbmm = models.HomoBMModel(fist_element.Field2D(38,38,1,False),agentNum=200,D=0.05)
+    hbmm = models.HomoBMModel(fist_element.Field2D(30,30,1,False),agentNum=200,D=0.005)
     hbmm.simulate(step_num=3000)
     hbmm.save_csv('homo_200_{:d}.csv'.format(m))
 '''
-
-hbmm = models.HomoBMModel(fist_element.Field2D(38,38,1,False),agentNum=200,D=0.02)
+hbmm = models.HomoBMModel(fist_element.Field2D(20,20,1,False),agentNum=300,D=0.02)
 hbmm.simulate(step_num=3000)
-hbmm.save_csv('homo_200.csv')
-
-sh = models.SpatialHeteroBMModel(False,500,0.1,D_tuple=(0.02,0.06),sat_rate=0.7)
-sh.simulate(step_num=3000)
-#sh.overview()
-sh.save_csv('hetero_D_THU.csv')
+hbmm.save_csv('homo_300_D002.csv')
+'''
 
 ''' heterogeneous BM simulation
 sh = models.SpatialHeteroBMModel(False,500,0.1,D_tuple=(0.02,0.06),sat_rate=0.7)

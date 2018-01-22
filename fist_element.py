@@ -171,7 +171,12 @@ class BasicModel (ABC):
         row_fmt = '{0:f},{1:f},{2:f},{3:f},{4:f}\n'
         with open(path,'w') as f:
             for row in m:
-                f.write(row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4]))
+                str_to_w = row_fmt.format(row[0,0],row[0,1],row[0,2],row[0,3],row[0,4])
+#                x = str_to_w.split(',')
+#                print(x)
+#                if not isinstance(int(x),int):
+#                    print(int(x))
+                f.write(str_to_w)
     def agent_prop(self,name):
         x = []
         for agent in self.agents:
